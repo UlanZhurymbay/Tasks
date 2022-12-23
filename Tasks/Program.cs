@@ -1,6 +1,5 @@
 using AppCore.Interfaces;
 using Infrastructure.DataContext;
-using Infrastructure.Helper;
 using Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Tasks.Extensions;
@@ -19,10 +18,7 @@ var connection = builder.Configuration.GetConnectionString("Connection");
 builder.Services.AddDbContext<TaskContext>(option => option.UseSqlite(connection));
 
 //add services
-builder.Services.AddTransient<IProject, ProjectService>();
-builder.Services.AddTransient<ITask, TaskService>();
-builder.Services.AddTransient<ContextHelper>();
-builder.Services.AddTransient<StateHelper>();
+builder.Services.AddTransient<IContext, Context>();
 
 var app = builder.Build().MigrateDbContext<TaskContext>();
 

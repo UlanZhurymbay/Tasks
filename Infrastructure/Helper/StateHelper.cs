@@ -2,9 +2,9 @@ using AppCore.Enums;
 
 namespace Infrastructure.Helper;
 
-public class StateHelper
+public static class StateHelper
 {
-    public string ChangeStateMessage(ProjectState state, ProjectState changeState)
+    public static string ChangeStateMessage(ProjectState state, ProjectState changeState)
     {
         return (state, changeState) switch
         {
@@ -22,7 +22,7 @@ public class StateHelper
             _ => string.Empty
         };
     }
-    public string ChangeStateMessage(TaskState state, TaskState changeState)
+    public static string ChangeStateMessage(TaskState state, TaskState changeState)
     {
         return (state, changeState) switch
         {

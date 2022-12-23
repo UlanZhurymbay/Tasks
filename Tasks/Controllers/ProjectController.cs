@@ -1,8 +1,12 @@
 using AppCore.Entities;
 using AppCore.Exceptions;
 using AppCore.Interfaces;
+using AppCore.Messages;
 using AppCore.ViewModel;
+using Infrastructure.Helper;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Task = AppCore.Entities.Task;
 
 namespace Tasks.Controllers;
 
@@ -10,37 +14,43 @@ namespace Tasks.Controllers;
 [Route("[controller]")]
 public class ProjectController : Controller
 {
-    private readonly IProject _project;
+    private readonly IContext _context;
 
-    public ProjectController(IProject project)
+    public ProjectController(IContext project)
     {
-        _project = project;
+        _context = project;
     }
 
     [HttpGet("Projects")]
     public async Task<IActionResult> GetAllAsync()
     {
-        return await _project.GetAllAsync();
+        var projects = await _context.GetAll<Project>()
+            .Include(p => p.Tasks)
+            .ToListAsync();
+        return new OkObjectResult(projects);
     }
 
 
     [HttpGet("{id:int}")]
-    public async Task<IActionResult> GetProjectAsync(int id)
+    public async Task<IActionResult> GetAsync(int id)
     {
         try
         {
-            return await _project.FindAsync(id);
+            var project = await _context.FindAsync<Project>(id, p => p.Tasks);
+            return new OkObjectResult(project);
         }
-        catch (NotFoundException e)
+        catch (NotFoundException)
         {
-            return new NotFoundObjectResult(e.Message);
+            return new NotFoundObjectResult(Message.NotFoundProject);
         }
     }
 
     [HttpPost]
     public async Task<IActionResult> AddAsync(ProjectViewModel model)
     {
-        return await _project.AddAsync(model);
+        var project = new Project(model.Name, model.Description, model.Priority);
+        await _context.AddAsync(project);
+        return new OkObjectResult(project);
     }
 
     [HttpPut("{id:int}")]
@@ -48,11 +58,13 @@ public class ProjectController : Controller
     {
         try
         {
-            return await _project.EditAsync(model, id);
+            var project = await _context.FindAsync<Project>(id);
+            await _context.UpdateAsync(project.Edit(model.Name, model.Description));
+            return new OkObjectResult(project);
         }
-        catch (NotFoundException e)
+        catch (NotFoundException)
         {
-            return new NotFoundObjectResult(e.Message);
+            return new NotFoundObjectResult(Message.NotFoundProject);
         }
     }
 
@@ -61,11 +73,18 @@ public class ProjectController : Controller
     {
         try
         {
-            return await _project.ChangeStateAsync(model, id);
+            var project = await _context.FindAsync<Project>(id);
+            var errorMessage = StateHelper.ChangeStateMessage(project.State, model.State);
+            if (!string.IsNullOrEmpty(errorMessage))
+            {
+                return new BadRequestObjectResult(errorMessage);
+            }
+            await _context.UpdateAsync(project.ChangeState(model.State));
+            return new OkObjectResult(project);
         }
-        catch (NotFoundException e)
+        catch (NotFoundException)
         {
-            return new NotFoundObjectResult(e.Message);
+            return new NotFoundObjectResult(Message.NotFoundProject);
         }
     }
 
@@ -75,24 +94,32 @@ public class ProjectController : Controller
     {
         try
         {
-            return await _project.RemoveAsync(id);
+            await _context.RemoveAsync(await _context.FindAsync<Project>(id));
+            return new OkResult();
         }
-        catch (NotFoundException e)
+        catch (NotFoundException)
         {
-            return new NotFoundObjectResult(e.Message);
+            return new NotFoundObjectResult(Message.NotFoundProject);
         }
     }
 
     [HttpDelete("DeleteTask/{projectId:int}")]
-    public async Task<IActionResult> DeleteAsync(int projectId, int taskId)
+    public async Task<IActionResult> DeleteTaskAsync(int projectId, int taskId)
     {
         try
         {
-            return await _project.RemoveTaskAsync(projectId, taskId);
+            var project = await _context.FindAsync<Project>(projectId, p => p.Tasks);
+            var task = await _context.FindAsync<Task>(taskId);
+            if (!project.Tasks.Any(t => t == task))
+            {
+                return new NotFoundObjectResult(Message.NotHasTask);
+            }
+            await _context.UpdateAsync(project.RemoveTask(task));
+            return new OkResult();
         }
-        catch (NotFoundException e)
+        catch (NotFoundException)
         {
-            return new NotFoundObjectResult(e.Message);
+            return new NotFoundObjectResult(Message.NotFoundProjectOrTask);
         }
     }
 }

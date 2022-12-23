@@ -1,7 +1,12 @@
+using AppCore.Entities;
 using AppCore.Exceptions;
 using AppCore.Interfaces;
+using AppCore.Messages;
 using AppCore.ViewModel;
+using Infrastructure.Helper;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Task = AppCore.Entities.Task;
 
 namespace Tasks.Controllers;
 [ApiController]
@@ -9,31 +14,32 @@ namespace Tasks.Controllers;
 public class TaskController : Controller
 {
 
-    private readonly ITask _task;
+    private readonly IContext _context;
 
 
-    public TaskController(ITask task)
+    public TaskController(IContext context)
     {
-        _task = task;
+        _context = context;
     }
 
     [HttpGet("Tasks")]
     public async Task<IActionResult> GetAllAsync()
     {
-         return await _task.GetAllAsync();
-
+        var tasks = await _context.GetAll<Task>().ToListAsync();
+         return new OkObjectResult(tasks);
     }
 
     [HttpGet("{id:int}")]
-    public async Task<IActionResult> GetTaskAsync(int id)
+    public async Task<IActionResult> GetAsync(int id)
     {
         try
         {
-            return await _task.FindAsync(id);
+            var task = await _context.FindAsync<Task>(id);
+            return new OkObjectResult(task);
         }
-        catch (NotFoundException e)
+        catch (NotFoundException)
         {
-            return new NotFoundObjectResult(e.Message);
+            return new NotFoundObjectResult(Message.NotFoundTask);
         }
     }
         
@@ -41,12 +47,15 @@ public class TaskController : Controller
     public async Task<IActionResult> AddAsync(TaskViewModel model)
     {
         try
-        {
-            return await _task.AddAsync(model);
+        {       
+            var project = await _context.FindAsync<Project>(model.ProjectId);
+            var task = new Task(model.Name, model.Description, model.Priority);
+            await _context.UpdateAsync(project.AddTask(task));
+            return new ObjectResult(project);
         }
-        catch (NotFoundException e)
+        catch (NotFoundException)
         {
-            return new NotFoundObjectResult(e.Message);
+            return new NotFoundObjectResult(Message.NotFoundProject);
         }
     }
     
@@ -55,11 +64,13 @@ public class TaskController : Controller
     {
         try
         {
-            return await _task.EditAsync(model, id);
+            var task = await _context.FindAsync<Task>(id);
+            await _context.UpdateAsync(task.Edit(model.Name, model.Description));
+            return new OkObjectResult(task);
         }
-        catch (NotFoundException e)
+        catch (NotFoundException)
         {
-            return new NotFoundObjectResult(e.Message);
+            return new NotFoundObjectResult(Message.NotFoundTask);
         }
     }
     
@@ -68,11 +79,13 @@ public class TaskController : Controller
     {
         try
         {
-            return await _task.RemoveAsync(id);
+            var task = await _context.FindAsync<Task>(id);
+            await _context.RemoveAsync(task);
+            return new OkResult();
         }
-        catch (NotFoundException e)
+        catch (NotFoundException)
         {
-            return new NotFoundObjectResult(e.Message);
+            return new NotFoundObjectResult(Message.NotFoundTask);
         }
     }
     
@@ -81,11 +94,18 @@ public class TaskController : Controller
     {
         try
         {
-            return await _task.ChangeStateAsync(model, id);
+            var task = await _context.FindAsync<Task>(id);
+            var errorMessage = StateHelper.ChangeStateMessage(task.State, model.State);
+            if (!string.IsNullOrEmpty(errorMessage))
+            {
+                return new BadRequestObjectResult(errorMessage);
+            }
+            await _context.UpdateAsync(task.ChangeState(model.State));
+            return new OkObjectResult(task);
         }
-        catch (NotFoundException e)
+        catch (NotFoundException)
         {
-            return new NotFoundObjectResult(e.Message);
+            return new NotFoundObjectResult(Message.NotFoundTask);
         }
     }
 }
