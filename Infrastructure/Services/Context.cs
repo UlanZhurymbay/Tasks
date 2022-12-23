@@ -17,7 +17,7 @@ public class Context : IContext
     {
         _dbContext = dbContext;
     }
-    public  DbSet<T> GetAll<T>() where T : BaseEntity =>
+    public  IQueryable<T> GetAll<T>() where T : BaseEntity =>
         _dbContext.Set<T>();
     
     public async Task<T> FindAsync<T>(int id) where T : BaseEntity =>
