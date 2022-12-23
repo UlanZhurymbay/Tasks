@@ -1,0 +1,11 @@
+* How adding migration *
+
+cd .\Infrastructure\                                                                    \\first command  (open terminal)
+dotnet ef --startup-project ..\Tasks\ migrations add Initial --context TaskContext      \\add migrations
+dotnet ef --startup-project ..\Tasks\ database update --context TaskContext             \\database update
+
+***  Ready Run ***
+
+
+...NuGets...
+*Polly* - I used the *Polly* library for debugged work with migration

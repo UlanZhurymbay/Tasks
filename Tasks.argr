@@ -1,0 +1,5 @@
+<ArchitectureGraph>
+  <Module Identifier="260B08E2-BE67-4559-8D8B-DCDFC26668A7" Name="Tasks" />
+  <Module Identifier="DF0E639B-2936-434B-AAFA-4007E78803AC" Name="Infrastructure" />
+  <Module Identifier="6DAE752B-84AA-4F18-BCCE-BD83A501FFD3" Name="AppCore" />
+</ArchitectureGraph>
